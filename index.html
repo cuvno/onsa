@@ -18,7 +18,7 @@
             background-color: #ffffff;
             overflow: hidden;
             -webkit-user-select: none;
-            touch-action: manipulation; /* ブラウザのダブルタップズームを防止 */
+            touch-action: manipulation;
         }
 
         #onsaImage {
@@ -41,13 +41,19 @@
         let gainNode = null;
         const imgElement = document.getElementById('onsaImage');
 
+        // --- 1. 画像のプリロード (チラつき防止) ---
+        const imgOn = new Image();
+        imgOn.src = "onsa-on.jpg";
+        const imgOff = new Image();
+        imgOff.src = "onsa-off.jpg";
+
         imgElement.addEventListener('click', () => {
-            // AudioContextの生成（初回クリック時のみ）
+            // AudioContextの生成（初回のみ）
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
 
-            // iOSのサスペンド解除対策
+            // iOS対策：サスペンド状態の解除
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
@@ -55,40 +61,45 @@
             if (!oscillator) {
                 // --- 音を鳴らす処理 ---
                 oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
 
-                gainNode = audioCtx.createGain();
-                // 鳴り始めのプチッというノイズを防ぐため、ごくわずかにフェードイン
+                // 2. フェードイン (ブチッというノイズを完全に消す)
                 gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 0.01);
+                gainNode.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 0.02);
 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 
                 oscillator.start();
-                imgElement.src = "onsa-on.jpg";
+                imgElement.src = imgOn.src;
 
             } else {
                 // --- 音を止める処理 ---
                 const now = audioCtx.currentTime;
-                
-                // 0.1秒かけて音を消す（ノイズ防止）
+                const fadeTime = 0.1; // 0.1秒かけて消す
+                const stopTime = now + fadeTime;
+
+                // 3. 正確なフェードアウト (exponentialRampで滑らかに)
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime);
 
-                const tempOscillator = oscillator;
-                const tempGain = gainNode;
+                // 4. stop(stopTime) を使用 (タイマーのズレを解消)
+                oscillator.stop(stopTime);
 
-                setTimeout(() => {
-                    tempOscillator.stop();
-                    tempOscillator.disconnect();
-                    tempGain.disconnect();
-                }, 100);
+                // メモリ解放：音が完全に止まったら接続を切る
+                const currentOsc = oscillator;
+                const currentGain = gainNode;
+                currentOsc.onended = () => {
+                    currentOsc.disconnect();
+                    currentGain.disconnect();
+                };
 
                 oscillator = null;
                 gainNode = null;
-                imgElement.src = "onsa-off.jpg";
+                imgElement.src = imgOff.src;
             }
         });
     </script>
