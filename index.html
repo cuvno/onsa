@@ -1,44 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
+    <meta charset="UTF-8">
     <!-- iPhoneホーム画面用のアイコン指定 -->
     <link rel="apple-touch-icon" href="icon.png">
     
     <!-- アプリっぽく全画面で起動させる設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>440Hz音叉</title>
-</head>    
+    
+    <style>
+        /* 画面中央に配置するスタイル */
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff; /* 背景色はお好みで */
+            overflow: hidden;
+            -webkit-user-select: none; /* テキスト選択を防止 */
+        }
+
+        #onsaImage {
+            max-width: 80%;  /* 画面幅に合わせて調整 */
+            max-height: 80%;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* タップ時の青い枠を消す */
+        }
+    </style>
+</head>
 <body>
-    <div style="text-align: center;">
-        <button id="playBtn" style="font-size: 24px; padding: 20px 40px; border-radius: 15px; border: none; background-color: #007AFF; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer;">
-            440Hzを鳴らす
-        </button>
-    </div>
+
+    <!-- 最初はoff画像を表示 -->
+    <img id="onsaImage" src="onsa-off.jpg" alt="音叉">
 
     <script>
         let audioCtx = null;
         let oscillator = null;
+        const imgElement = document.getElementById('onsaImage');
 
-        document.getElementById('playBtn').addEventListener('click', () => {
+        // 画像タップ時の処理
+        imgElement.addEventListener('click', () => {
             if (!audioCtx) {
-                // 初回クリック時にオーディオ機能を開始（iPhoneの制限対策）
+                // 初回クリック時にオーディオ機能を開始
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
 
             if (!oscillator) {
-                // 440Hzの音を作る
+                // 440Hzの音を開始
                 oscillator = audioCtx.createOscillator();
-                oscillator.type = 'sine'; // サイン波
+                oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
                 oscillator.connect(audioCtx.destination);
                 oscillator.start();
-                document.getElementById('playBtn').innerText = "止める";
+
+                // 画像をONに切り替え
+                imgElement.src = "onsa-on.jpg";
             } else {
-                // 止める
+                // 音を止める
                 oscillator.stop();
                 oscillator = null;
-                document.getElementById('playBtn').innerText = "440Hzを鳴らす";
+
+                // 画像をOFFに切り替え
+                imgElement.src = "onsa-off.jpg";
             }
         });
     </script>
