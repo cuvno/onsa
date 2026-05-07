@@ -15,38 +15,35 @@
         let ctx = null, osc = null, gain = null, isPlaying = false;
         const img = document.getElementById('onsaImage');
 
-        img.addEventListener('pointerdown', (e) => {
+        img.addEventListener('pointerdown', async (e) => {
             e.preventDefault();
 
-            // 1. 初回のみ作成
+            // 1. AudioContextの作成
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 osc = ctx.createOscillator();
                 gain = ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.value = 440;
-                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.value = 0;
                 osc.connect(gain).connect(ctx.destination);
                 osc.start();
             }
 
-            // 2. 毎回必ず resume を呼ぶ
-            ctx.resume();
+            // 2. 起動を「待つ」。これが1回目から音を出すための決定打
+            if (ctx.state === 'suspended') {
+                await ctx.resume();
+            }
 
-            // 3. 「今すぐ」ではなく「0.1秒後」に音量を上げきるよう予約する
-            // これが iPhone の起動ラグを抜ける一番シンプルで確実な方法です
-            const t = ctx.currentTime + 0.1;
-
+            // 3. 起動した「後」で音量を操作する
             if (!isPlaying) {
-                // ON: 0.1秒かけて音を出す
-                gain.gain.cancelScheduledValues(0);
-                gain.gain.linearRampToValueAtTime(0.2, t);
+                // ON: 即座に値をセット（ポップノイズより即時性を優先）
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
                 img.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                // OFF: 0.1秒かけて音を消す
-                gain.gain.cancelScheduledValues(0);
-                gain.gain.linearRampToValueAtTime(0, t);
+                // OFF: ここだけは少し滑らかに（ブツ音防止）
+                gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
                 img.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
