@@ -43,9 +43,10 @@
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
-                // 初期音量を極小値に設定（0だとexponentialRampでノイズが出るため）
+                // 最初は極小値。0にしないのがノイズ回避のコツ
                 gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
                 gainNode.connect(audioCtx.destination);
+
                 oscillator = audioCtx.createOscillator();
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
@@ -60,27 +61,29 @@
                 gainNode.gain.cancelAndHoldAtTime(now);
             } else {
                 gainNode.gain.cancelScheduledValues(now);
-                // 指数関数をスムーズに繋ぐため、現在の値を再設定
-                const currentVal = Math.max(0.0001, gainNode.gain.value);
-                gainNode.gain.setValueAtTime(currentVal, now);
+                gainNode.gain.setValueAtTime(Math.max(0.0001, gainNode.gain.value), now);
             }
         }
 
         imgElement.addEventListener('pointerdown', async (e) => {
             e.preventDefault();
+            const firstTime = !audioCtx;
             await initAudio();
-            const now = audioCtx.currentTime;
+            
+            // 初回起動時はContextの準備を待つため、わずかに時間をずらす
+            const now = audioCtx.currentTime + (firstTime ? 0.02 : 0);
+
             if (!isPlaying) {
                 holdGainValue(now);
-                // 0.08秒かけて指数関数的に立ち上げ。これが一番「ブツ音」が消えます
-                gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.08);
+                // 立ち上がり。0.08秒から0.1秒付近が一番「ブツッ」と言いにくいです
+                gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.1);
                 imgElement.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
                 holdGainValue(now);
-                // 停止時も0.1秒かけて滑らかに減衰
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
-                gainNode.gain.setValueAtTime(0, now + 0.101);
+                // 停止時。ここも急すぎるとブツッとなるので0.12秒ほど確保
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+                gainNode.gain.setValueAtTime(0, now + 0.121);
                 imgElement.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
