@@ -2,79 +2,81 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- iPhoneホーム画面用のアイコン指定 -->
     <link rel="apple-touch-icon" href="icon.png">
-    
-    <!-- アプリっぽく全画面で起動させる設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>音叉</title>
     
     <style>
-        /* 画面中央に配置するスタイル */
         body {
             margin: 0;
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #ffffff; /* 背景色はお好みで */
+            background-color: #ffffff;
             overflow: hidden;
-            -webkit-user-select: none; /* テキスト選択を防止 */
+            -webkit-user-select: none;
         }
 
         #onsaImage {
-            max-width: 90vw;  /* 画面幅に合わせて調整 */
+            max-width: 90vw;
             max-height: 90vh;
-            width: auto;      /* 比率を維持 */
-            height: auto;     /* 比率を維持 */
+            width: auto;
+            height: auto;
             cursor: pointer;
-            -webkit-tap-highlight-color: transparent; /* タップ時の青い枠を消す */
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
 </head>
 <body>
 
-    <!-- 最初はoff画像を表示 -->
     <img id="onsaImage" src="onsa-off.jpg" alt="音叉">
 
     <script>
         let audioCtx = null;
         let oscillator = null;
+        let gainNode = null; // 音量調節用のノードを定義
         const imgElement = document.getElementById('onsaImage');
 
-        // 画像タップ時の処理
         imgElement.addEventListener('click', () => {
             if (!audioCtx) {
-                // 初回クリック時にオーディオ機能を開始
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
 
             if (!oscillator) {
-                // 440Hzの音を開始
+                // --- 音を鳴らす処理 ---
                 oscillator = audioCtx.createOscillator();
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
-                oscillator.connect(audioCtx.destination);
-                oscillator.start();
 
-                // 画像をONに切り替え
+                // GainNode（ボリューム）を作成して接続
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime); // 最初は音量1.0
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
                 imgElement.src = "onsa-on.jpg";
+
             } else {
-                // 「ブツッ」を防ぐために音量を滑らかに下げる
+                // --- 音を止める処理（ノイズ対策あり） ---
                 const now = audioCtx.currentTime;
-                // 0.1秒かけて音量を0にする
+                
+                // 0.1秒かけて音量を0にする（指数的な減衰）
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
 
-                // 音が消えきった頃（0.1秒後）に完全に停止させる
                 const tempOscillator = oscillator;
+                // 0.1秒待ってから物理的に音を止める
                 setTimeout(() => {
                     tempOscillator.stop();
                 }, 100);
 
                 oscillator = null;
+                // gainNodeもリセット
                 gainNode = null;
                 imgElement.src = "onsa-off.jpg";
             }
