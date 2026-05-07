@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <button id="playBtn" style="font-size: 50px; padding: 20px;">440Hzを鳴らす</button>
+
+    <script>
+        let audioCtx = null;
+        let oscillator = null;
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!audioCtx) {
+                // 初回クリック時にオーディオ機能を開始（iPhoneの制限対策）
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (!oscillator) {
+                // 440Hzの音を作る
+                oscillator = audioCtx.createOscillator();
+                oscillator.type = 'sine'; // サイン波
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.connect(audioCtx.destination);
+                oscillator.start();
+                document.getElementById('playBtn').innerText = "止める";
+            } else {
+                // 止める
+                oscillator.stop();
+                oscillator = null;
+                document.getElementById('playBtn').innerText = "440Hzを鳴らす";
+            }
+        });
+    </script>
+</body>
+</html>
