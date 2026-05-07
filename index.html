@@ -62,11 +62,20 @@
                 // 画像をONに切り替え
                 imgElement.src = "onsa-on.jpg";
             } else {
-                // 音を止める
-                oscillator.stop();
-                oscillator = null;
+                // 「ブツッ」を防ぐために音量を滑らかに下げる
+                const now = audioCtx.currentTime;
+                // 0.1秒かけて音量を0にする
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
 
-                // 画像をOFFに切り替え
+                // 音が消えきった頃（0.1秒後）に完全に停止させる
+                const tempOscillator = oscillator;
+                setTimeout(() => {
+                    tempOscillator.stop();
+                }, 100);
+
+                oscillator = null;
+                gainNode = null;
                 imgElement.src = "onsa-off.jpg";
             }
         });
