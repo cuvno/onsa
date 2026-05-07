@@ -3,37 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>音叉</title>
-    <link rel="apple-touch-icon" href="icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <link rel="preload" as="image" href="onsa-on.jpg">
-    <link rel="preload" as="image" href="onsa-off.jpg">
     <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #ffffff;
-            overflow: hidden;
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: manipulation;
-        }
-        #onsaImage {
-            max-width: 90vw;
-            max-height: 90vh;
-            width: auto;
-            height: auto;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
+        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; -webkit-user-select: none; }
+        img { max-width: 90vw; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body>
-    <img id="onsaImage" src="onsa-off.jpg" alt="音叉">
+    <img id="onsaImage" src="onsa-off.jpg">
     <script>
         let ctx = null, osc = null, gain = null, isPlaying = false;
         const img = document.getElementById('onsaImage');
@@ -41,30 +18,35 @@
         img.addEventListener('pointerdown', (e) => {
             e.preventDefault();
 
-            // 1. 作成と開始を最短で行う
+            // 1. 初回のみ作成
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 osc = ctx.createOscillator();
                 gain = ctx.createGain();
                 osc.type = 'sine';
                 osc.frequency.value = 440;
-                gain.gain.value = 0;
+                gain.gain.setValueAtTime(0, ctx.currentTime);
                 osc.connect(gain).connect(ctx.destination);
                 osc.start();
             }
 
-            // 2. iOSのブロック解除（ここが1回目に必須）
-            if (ctx.state === 'suspended') {
-                ctx.resume();
-            }
+            // 2. 毎回必ず resume を呼ぶ
+            ctx.resume();
 
-            // 3. 複雑な予約命令(Ramp)を全削除。値を直接書き換える
+            // 3. 「今すぐ」ではなく「0.1秒後」に音量を上げきるよう予約する
+            // これが iPhone の起動ラグを抜ける一番シンプルで確実な方法です
+            const t = ctx.currentTime + 0.1;
+
             if (!isPlaying) {
-                gain.gain.value = 0.2; 
+                // ON: 0.1秒かけて音を出す
+                gain.gain.cancelScheduledValues(0);
+                gain.gain.linearRampToValueAtTime(0.2, t);
                 img.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                gain.gain.value = 0;
+                // OFF: 0.1秒かけて音を消す
+                gain.gain.cancelScheduledValues(0);
+                gain.gain.linearRampToValueAtTime(0, t);
                 img.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
