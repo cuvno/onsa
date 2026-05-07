@@ -18,6 +18,7 @@
             background-color: #ffffff;
             overflow: hidden;
             -webkit-user-select: none;
+            touch-action: manipulation; /* ブラウザのダブルタップズームを防止 */
         }
 
         #onsaImage {
@@ -41,14 +42,14 @@
         const imgElement = document.getElementById('onsaImage');
 
         imgElement.addEventListener('click', () => {
-            // 触覚フィードバックを発動 (10ミリ秒の短い振動)
-            // Taptic Engineを叩くような軽い感覚を与えます
-            if (navigator.vibrate) {
-                navigator.vibrate(10); 
-            }
-
+            // AudioContextの生成（初回クリック時のみ）
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            // iOSのサスペンド解除対策
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
             }
 
             if (!oscillator) {
@@ -58,7 +59,9 @@
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
 
                 gainNode = audioCtx.createGain();
-                gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+                // 鳴り始めのプチッというノイズを防ぐため、ごくわずかにフェードイン
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 0.01);
 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
@@ -68,17 +71,19 @@
 
             } else {
                 // --- 音を止める処理 ---
-                if (navigator.vibrate) {
-                    navigator.vibrate(5); 
-                }
                 const now = audioCtx.currentTime;
                 
+                // 0.1秒かけて音を消す（ノイズ防止）
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
 
                 const tempOscillator = oscillator;
+                const tempGain = gainNode;
+
                 setTimeout(() => {
                     tempOscillator.stop();
+                    tempOscillator.disconnect();
+                    tempGain.disconnect();
                 }, 100);
 
                 oscillator = null;
