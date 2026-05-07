@@ -39,43 +39,42 @@
         let audioCtx = null, oscillator = null, gainNode = null, isPlaying = false;
         const imgElement = document.getElementById('onsaImage');
 
-        function initAudio() {
+        async function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
                 gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
                 gainNode.connect(audioCtx.destination);
-
                 oscillator = audioCtx.createOscillator();
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
                 oscillator.connect(gainNode);
                 oscillator.start();
             }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
-        imgElement.addEventListener('pointerdown', (e) => {
+        imgElement.addEventListener('pointerdown', async (e) => {
             e.preventDefault();
-            initAudio();
+            const isFirstTime = !audioCtx;
+            await initAudio();
             
-            const now = audioCtx.currentTime;
+            // 初回は0.05秒、2回目以降は即時(0)のディレイをかけることで「1回目鳴らない」を防止
+            const now = audioCtx.currentTime + (isFirstTime ? 0.05 : 0);
 
             if (!isPlaying) {
-                // --- ON時：直線的に立ち上げる (0.1秒) ---
-                // 前の命令を消し、今の音量から0.1秒かけて0.2へ
                 gainNode.gain.cancelScheduledValues(now);
-                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1);
-
+                gainNode.gain.setValueAtTime(0.0001, now);
+                // 立ち上がりを0.05秒に。これより短いと「ブツッ」と聞こえやすいです
+                gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.05);
                 imgElement.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                // --- OFF時：直線的に消す (0.15秒) ---
                 gainNode.gain.cancelScheduledValues(now);
-                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.linearRampToValueAtTime(0, now + 0.15);
-
+                gainNode.gain.setValueAtTime(Math.max(gainNode.gain.value, 0.0001), now);
+                // 停止も0.1秒かけて滑らかに
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                gainNode.gain.setValueAtTime(0, now + 0.101);
                 imgElement.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
