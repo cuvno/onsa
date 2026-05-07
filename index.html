@@ -37,10 +37,16 @@
     <script>
         let audioCtx = null;
         let oscillator = null;
-        let gainNode = null; // 音量調節用のノードを定義
+        let gainNode = null;
         const imgElement = document.getElementById('onsaImage');
 
         imgElement.addEventListener('click', () => {
+            // 触覚フィードバックを発動 (10ミリ秒の短い振動)
+            // Taptic Engineを叩くような軽い感覚を与えます
+            if (navigator.vibrate) {
+                navigator.vibrate(10); 
+            }
+
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -51,9 +57,8 @@
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
 
-                // GainNode（ボリューム）を作成して接続
                 gainNode = audioCtx.createGain();
-                gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime); // 最初は音量1.0
+                gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
@@ -62,21 +67,18 @@
                 imgElement.src = "onsa-on.jpg";
 
             } else {
-                // --- 音を止める処理（ノイズ対策あり） ---
+                // --- 音を止める処理 ---
                 const now = audioCtx.currentTime;
                 
-                // 0.1秒かけて音量を0にする（指数的な減衰）
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
 
                 const tempOscillator = oscillator;
-                // 0.1秒待ってから物理的に音を止める
                 setTimeout(() => {
                     tempOscillator.stop();
                 }, 100);
 
                 oscillator = null;
-                // gainNodeもリセット
                 gainNode = null;
                 imgElement.src = "onsa-off.jpg";
             }
