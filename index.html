@@ -5,7 +5,7 @@
     <title>音叉</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; -webkit-user-select: none; }
+        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: #fff; overflow: hidden; -webkit-user-select: none; }
         img { max-width: 90vw; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
@@ -15,35 +15,33 @@
         let ctx = null, osc = null, gain = null, isPlaying = false;
         const img = document.getElementById('onsaImage');
 
-        img.addEventListener('pointerdown', async (e) => {
+        img.addEventListener('pointerdown', (e) => {
             e.preventDefault();
 
-            // 1. AudioContextの作成
+            // 1. AudioContextの生成と同時に音量をセット
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 osc = ctx.createOscillator();
                 gain = ctx.createGain();
+                
                 osc.type = 'sine';
                 osc.frequency.value = 440;
-                gain.gain.value = 0;
+                gain.gain.value = 0; // 最初だけ無音で接続
+                
                 osc.connect(gain).connect(ctx.destination);
                 osc.start();
             }
 
-            // 2. 起動を「待つ」。これが1回目から音を出すための決定打
-            if (ctx.state === 'suspended') {
-                await ctx.resume();
-            }
+            // 2. 状態に関わらず再開
+            ctx.resume();
 
-            // 3. 起動した「後」で音量を操作する
+            // 3. 複雑な予約をせず、直接値を上書きする
             if (!isPlaying) {
-                // ON: 即座に値をセット（ポップノイズより即時性を優先）
-                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.value = 0.2; // ON（即座）
                 img.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                // OFF: ここだけは少し滑らかに（ブツ音防止）
-                gain.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+                gain.gain.value = 0;   // OFF（即座）
                 img.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
