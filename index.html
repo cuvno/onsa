@@ -68,6 +68,9 @@
 
             } else {
                 // --- 音を止める処理 ---
+                if (navigator.vibrate) {
+                    navigator.vibrate(5); 
+                }
                 const now = audioCtx.currentTime;
                 
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
