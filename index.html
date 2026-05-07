@@ -10,8 +10,26 @@
     <link rel="preload" as="image" href="onsa-on.jpg">
     <link rel="preload" as="image" href="onsa-off.jpg">
     <style>
-        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #ffffff; overflow: hidden; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        #onsaImage { max-width: 90vw; max-height: 90vh; width: auto; height: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        #onsaImage {
+            max-width: 90vw;
+            max-height: 90vh;
+            width: auto;
+            height: auto;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -23,6 +41,7 @@
         img.addEventListener('pointerdown', (e) => {
             e.preventDefault();
 
+            // 1. 作成と開始を最短で行う
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 osc = ctx.createOscillator();
@@ -34,19 +53,18 @@
                 osc.start();
             }
 
-            ctx.resume();
-            const now = ctx.currentTime;
+            // 2. iOSのブロック解除（ここが1回目に必須）
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
 
+            // 3. 複雑な予約命令(Ramp)を全削除。値を直接書き換える
             if (!isPlaying) {
-                // ON: 時間指定をせず、即座に値を書き換える（最優先）
-                gain.gain.cancelScheduledValues(now);
                 gain.gain.value = 0.2; 
                 img.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                // OFF: 止める時だけは不快なので少しだけ滑らかに
-                gain.gain.cancelScheduledValues(now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                gain.gain.value = 0;
                 img.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
