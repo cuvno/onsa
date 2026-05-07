@@ -2,48 +2,93 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>音叉</title>
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>音叉</title>
+    
     <style>
-        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: #fff; overflow: hidden; -webkit-user-select: none; }
-        img { max-width: 90vw; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            overflow: hidden;
+            -webkit-user-select: none;
+            touch-action: manipulation; /* ブラウザのダブルタップズームを防止 */
+        }
+
+        #onsaImage {
+            max-width: 90vw;
+            max-height: 90vh;
+            width: auto;
+            height: auto;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
-    <img id="onsaImage" src="onsa-off.jpg">
+
+    <img id="onsaImage" src="onsa-off.jpg" alt="音叉">
+
     <script>
-        let ctx = null, osc = null, gain = null, isPlaying = false;
-        const img = document.getElementById('onsaImage');
+        let audioCtx = null;
+        let oscillator = null;
+        let gainNode = null;
+        const imgElement = document.getElementById('onsaImage');
 
-        img.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-
-            // 1. AudioContextの生成と同時に音量をセット
-            if (!ctx) {
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                osc = ctx.createOscillator();
-                gain = ctx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.value = 440;
-                gain.gain.value = 0; // 最初だけ無音で接続
-                
-                osc.connect(gain).connect(ctx.destination);
-                osc.start();
+        imgElement.addEventListener('click', () => {
+            // AudioContextの生成（初回クリック時のみ）
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
 
-            // 2. 状態に関わらず再開
-            ctx.resume();
+            // iOSのサスペンド解除対策
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
 
-            // 3. 複雑な予約をせず、直接値を上書きする
-            if (!isPlaying) {
-                gain.gain.value = 0.2; // ON（即座）
-                img.src = 'onsa-on.jpg';
-                isPlaying = true;
+            if (!oscillator) {
+                // --- 音を鳴らす処理 ---
+                oscillator = audioCtx.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+
+                gainNode = audioCtx.createGain();
+                // 鳴り始めのプチッというノイズを防ぐため、ごくわずかにフェードイン
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 0.01);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                imgElement.src = "onsa-on.jpg";
+
             } else {
-                gain.gain.value = 0;   // OFF（即座）
-                img.src = 'onsa-off.jpg';
-                isPlaying = false;
+                // --- 音を止める処理 ---
+                const now = audioCtx.currentTime;
+                
+                // 0.1秒かけて音を消す（ノイズ防止）
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+
+                const tempOscillator = oscillator;
+                const tempGain = gainNode;
+
+                setTimeout(() => {
+                    tempOscillator.stop();
+                    tempOscillator.disconnect();
+                    tempGain.disconnect();
+                }, 100);
+
+                oscillator = null;
+                gainNode = null;
+                imgElement.src = "onsa-off.jpg";
             }
         });
     </script>
