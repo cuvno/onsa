@@ -39,12 +39,11 @@
         let audioCtx = null, oscillator = null, gainNode = null, isPlaying = false;
         const imgElement = document.getElementById('onsaImage');
 
-        async function initAudio() {
+        function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 gainNode = audioCtx.createGain();
-                // 最初は極小値。0にしないのがノイズ回避のコツ
-                gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
                 gainNode.connect(audioCtx.destination);
 
                 oscillator = audioCtx.createOscillator();
@@ -53,37 +52,30 @@
                 oscillator.connect(gainNode);
                 oscillator.start();
             }
-            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function holdGainValue(now) {
-            if (gainNode.gain.cancelAndHoldAtTime) {
-                gainNode.gain.cancelAndHoldAtTime(now);
-            } else {
-                gainNode.gain.cancelScheduledValues(now);
-                gainNode.gain.setValueAtTime(Math.max(0.0001, gainNode.gain.value), now);
-            }
-        }
-
-        imgElement.addEventListener('pointerdown', async (e) => {
+        imgElement.addEventListener('pointerdown', (e) => {
             e.preventDefault();
-            const firstTime = !audioCtx;
-            await initAudio();
+            initAudio();
             
-            // 初回起動時はContextの準備を待つため、わずかに時間をずらす
-            const now = audioCtx.currentTime + (firstTime ? 0.02 : 0);
+            const now = audioCtx.currentTime;
 
             if (!isPlaying) {
-                holdGainValue(now);
-                // 立ち上がり。0.08秒から0.1秒付近が一番「ブツッ」と言いにくいです
-                gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.1);
+                // --- ON時：直線的に立ち上げる (0.1秒) ---
+                // 前の命令を消し、今の音量から0.1秒かけて0.2へ
+                gainNode.gain.cancelScheduledValues(now);
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1);
+
                 imgElement.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                holdGainValue(now);
-                // 停止時。ここも急すぎるとブツッとなるので0.12秒ほど確保
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-                gainNode.gain.setValueAtTime(0, now + 0.121);
+                // --- OFF時：直線的に消す (0.15秒) ---
+                gainNode.gain.cancelScheduledValues(now);
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.15);
+
                 imgElement.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
