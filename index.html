@@ -10,8 +10,26 @@
     <link rel="preload" as="image" href="onsa-on.jpg">
     <link rel="preload" as="image" href="onsa-off.jpg">
     <style>
-        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #ffffff; overflow: hidden; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        #onsaImage { max-width: 90vw; max-height: 90vh; width: auto; height: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        #onsaImage {
+            max-width: 90vw;
+            max-height: 90vh;
+            width: auto;
+            height: auto;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -20,46 +38,46 @@
         let audioCtx = null, oscillator = null, gainNode = null, isPlaying = false;
         const img = document.getElementById('onsaImage');
 
-        function toggle() {
-            // 1. 初回のみコンテキスト作成
+        img.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+
+            // 1. AudioContextの生成と開始（非同期を使わず即時実行）
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                gainNode = audioCtx.createGain();
-                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                gainNode.connect(audioCtx.destination);
                 oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+                
                 oscillator.type = 'sine';
                 oscillator.frequency.value = 440;
+                
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
                 oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
                 oscillator.start();
             }
 
-            // 2. iOS対策（常に再開命令を投げる）
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            // 2. iOSのサスペンド解除
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
 
             const now = audioCtx.currentTime;
 
             if (!isPlaying) {
-                // ON: 直線で0.04秒（ブツ音を消しつつ最速で鳴らす）
+                // ON: 0.05秒で立ち上げ（これがブツ音を防ぐ最短時間です）
                 gainNode.gain.cancelScheduledValues(now);
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.linearRampToValueAtTime(0.2, now + 0.04);
+                gainNode.gain.linearRampToValueAtTime(0.2, now + 0.05);
                 img.src = 'onsa-on.jpg';
                 isPlaying = true;
             } else {
-                // OFF: 直線で0.06秒（滑らかに消す）
+                // OFF: 0.1秒で消去
                 gainNode.gain.cancelScheduledValues(now);
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.linearRampToValueAtTime(0, now + 0.06);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.1);
                 img.src = 'onsa-off.jpg';
                 isPlaying = false;
             }
-        }
-
-        // pointerdownで即実行（asyncは使わない）
-        img.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            toggle();
         });
     </script>
 </body>
