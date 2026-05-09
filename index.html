@@ -27,6 +27,11 @@
             width: auto;
             height: auto;
             cursor: pointer;
+            /* 選択とメニュー表示を無効化 */
+            -webkit-touch-callout: none; /* iOS Safariで長押しメニューを禁止 */
+            -webkit-user-select: none;    /* テキスト・画像の選択を禁止 */
+            user-select: none;
+            /* タップ時の青いハイライトを消す（既にある場合はそのままでOK） */
             -webkit-tap-highlight-color: transparent;
         }
     </style>
@@ -40,6 +45,11 @@
         let oscillator = null;
         let gainNode = null;
         const imgElement = document.getElementById('onsaImage');
+
+        // コンテキストメニューを禁止
+        imgElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        }, false);
 
         // --- 1. 画像のプリロード (チラつき防止) ---
         const imgOn = new Image();
