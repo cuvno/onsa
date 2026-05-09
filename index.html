@@ -1,123 +1,109 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <link rel="apple-touch-icon" href="icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>音叉</title>
-    
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #ffffff;
-            overflow: hidden;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
+    <meta charset="UTF-8">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>音叉</title>
+    
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            overflow: hidden;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
 
-        #onsaImage {
-            max-width: 90vw;
-            max-height: 90vh;
-            width: auto;
-            height: auto;
-            cursor: pointer;
-            /* 選択とメニュー表示を無効化 */
-            -webkit-touch-callout: none; /* iOS Safariで長押しメニューを禁止 */
-            -webkit-user-select: none;    /* テキスト・画像の選択を禁止 */
-            user-select: none;
-            /* ドラッグそのものを禁止するプロパティ（一部のブラウザ向け） */
-            -webkit-user-drag: none;
-            /* タップ時の青いハイライトを消す（既にある場合はそのままでOK） */
-            -webkit-tap-highlight-color: transparent;
-        }
-    </style>
+        #onsaImage {
+            max-width: 90vw;
+            max-height: 90vh;
+            width: auto;
+            height: auto;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
 </head>
 <body>
 
-    <img id="onsaImage" src="onsa-off.jpg" alt="音叉">
+    <img id="onsaImage" src="onsa-off.jpg" alt="音叉">
 
-    <script>
-        let audioCtx = null;
-        let oscillator = null;
-        let gainNode = null;
-        const imgElement = document.getElementById('onsaImage');
-        
-        // ドラッグ開始を無効化（画像が浮き上がるのを防ぐ）
-        imgElement.addEventListener('dragstart', (e) => {
-            e.preventDefault();
-        }, false);
-        // コンテキストメニューを禁止
-        imgElement.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        }, false);
+    <script>
+        let audioCtx = null;
+        let oscillator = null;
+        let gainNode = null;
+        const imgElement = document.getElementById('onsaImage');
 
-        // --- 1. 画像のプリロード (チラつき防止) ---
-        const imgOn = new Image();
-        imgOn.src = "onsa-on.jpg";
-        const imgOff = new Image();
-        imgOff.src = "onsa-off.jpg";
+        // --- 1. 画像のプリロード (チラつき防止) ---
+        const imgOn = new Image();
+        imgOn.src = "onsa-on.jpg";
+        const imgOff = new Image();
+        imgOff.src = "onsa-off.jpg";
 
-        imgElement.addEventListener('click', () => {
-            // AudioContextの生成（初回のみ）
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+        imgElement.addEventListener('click', () => {
+            // AudioContextの生成（初回のみ）
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
 
-            // iOS対策：サスペンド状態の解除
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            // iOS対策：サスペンド状態の解除
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
 
-            if (!oscillator) {
-                // --- 音を鳴らす処理 ---
-                oscillator = audioCtx.createOscillator();
-                gainNode = audioCtx.createGain();
+            if (!oscillator) {
+                // --- 音を鳴らす処理 ---
+                oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
 
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
 
-                // 2. フェードイン (ブチッというノイズを完全に消す)
-                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 0.02);
+                // 2. フェードイン (ブチッというノイズを完全に消す)
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(1.0, audioCtx.currentTime + 0.02);
 
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                
-                oscillator.start();
-                imgElement.src = imgOn.src;
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                imgElement.src = imgOn.src;
 
-            } else {
-                // --- 音を止める処理 ---
-                const now = audioCtx.currentTime;
-                const fadeTime = 0.1; // 0.1秒かけて消す
-                const stopTime = now + fadeTime;
+            } else {
+                // --- 音を止める処理 ---
+                const now = audioCtx.currentTime;
+                const fadeTime = 0.1; // 0.1秒かけて消す
+                const stopTime = now + fadeTime;
 
-                // 3. 正確なフェードアウト (exponentialRampで滑らかに)
-                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime);
+                // 3. 正確なフェードアウト (exponentialRampで滑らかに)
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime);
 
-                // 4. stop(stopTime) を使用 (タイマーのズレを解消)
-                oscillator.stop(stopTime);
+                // 4. stop(stopTime) を使用 (タイマーのズレを解消)
+                oscillator.stop(stopTime);
 
-                // メモリ解放：音が完全に止まったら接続を切る
-                const currentOsc = oscillator;
-                const currentGain = gainNode;
-                currentOsc.onended = () => {
-                    currentOsc.disconnect();
-                    currentGain.disconnect();
-                };
+                // メモリ解放：音が完全に止まったら接続を切る
+                const currentOsc = oscillator;
+                const currentGain = gainNode;
+                currentOsc.onended = () => {
+                    currentOsc.disconnect();
+                    currentGain.disconnect();
+                };
 
-                oscillator = null;
-                gainNode = null;
-                imgElement.src = imgOff.src;
-            }
-        });
-    </script>
+                oscillator = null;
+                gainNode = null;
+                imgElement.src = imgOff.src;
+            }
+        });
+    </script>
 </body>
 </html>
+
+画像に触れるとアップされて保存系のウィンドウが出る。触れても画面の動きが出ないようにしたい。
