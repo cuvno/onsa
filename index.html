@@ -31,6 +31,8 @@
             -webkit-touch-callout: none; /* iOS Safariで長押しメニューを禁止 */
             -webkit-user-select: none;    /* テキスト・画像の選択を禁止 */
             user-select: none;
+            /* ドラッグそのものを禁止するプロパティ（一部のブラウザ向け） */
+            -webkit-user-drag: none;
             /* タップ時の青いハイライトを消す（既にある場合はそのままでOK） */
             -webkit-tap-highlight-color: transparent;
         }
@@ -45,7 +47,11 @@
         let oscillator = null;
         let gainNode = null;
         const imgElement = document.getElementById('onsaImage');
-
+        
+        // ドラッグ開始を無効化（画像が浮き上がるのを防ぐ）
+        imgElement.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+        }, false);
         // コンテキストメニューを禁止
         imgElement.addEventListener('contextmenu', (e) => {
             e.preventDefault();
